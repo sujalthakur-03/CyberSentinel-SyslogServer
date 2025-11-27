@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(tree:*)",
+      "Bash(docker compose:*)",
+      "Bash(apt-get update:*)",
+      "Bash(apt-get install:*)",
+      "Bash(docker-compose:*)",
+      "Bash(make version:*)",
+      "Bash(make build:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(make down:*)",
+      "Bash(make up:*)",
+      "Bash(./scripts/health-check.sh:*)",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(python3:*)",
+      "Bash(nc:*)",
+      "Bash(echo:*)",
+      "Bash(npx create-react-app cybersentinel-ui --template typescript)",
+      "Bash(npm install:*)",
+      "Bash(git config:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

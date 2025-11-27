@@ -1,0 +1,325 @@
+services:
+  # ==================== Infrastructure Services ====================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: cybersentinel-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    container_name: cybersentinel-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_COMPRESSION_TYPE: lz4
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    hostname: opensearch
+    container_name: cybersentinel-opensearch
+    environment:
+      - cluster.name=cybersentinel-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    hostname: redis
+    container_name: cybersentinel-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    hostname: postgres
+    container_name: cybersentinel-postgres
+    environment:
+      POSTGRES_DB: cybersentinel
+      POSTGRES_USER: cybersentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-password-in-production}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cybersentinel"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Application Services ====================
+
+  receiver:
+    build:
+      context: ./services/receiver
+      dockerfile: Dockerfile
+    container_name: cybersentinel-receiver
+    hostname: receiver
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - RECEIVER_UDP_PORT=${RECEIVER_UDP_PORT:-514}
+      - RECEIVER_TCP_PORT=${RECEIVER_TCP_PORT:-514}
+      - RECEIVER_TLS_PORT=${RECEIVER_TLS_PORT:-6514}
+      - RECEIVER_TLS_ENABLED=${RECEIVER_TLS_ENABLED:-false}
+      - RECEIVER_MAX_MESSAGE_SIZE=${RECEIVER_MAX_MESSAGE_SIZE:-8192}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_RAW_LOGS=${KAFKA_TOPIC_RAW_LOGS:-raw-logs}
+    ports:
+      - "514:514/udp"
+      - "514:514/tcp"
+      - "6514:6514/tcp"
+      - "9100:9100/tcp"
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${RECEIVER_MAX_MEMORY:-512m}
+
+  processor:
+    build:
+      context: ./services/processor
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_RAW_LOGS=${KAFKA_TOPIC_RAW_LOGS:-raw-logs}
+      - KAFKA_TOPIC_PROCESSED_LOGS=${KAFKA_TOPIC_PROCESSED_LOGS:-processed-logs}
+      - KAFKA_CONSUMER_GROUP_PROCESSOR=${KAFKA_CONSUMER_GROUP_PROCESSOR:-log-processor-group}
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_USER=${OPENSEARCH_USER:-admin}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD:-admin}
+      - OPENSEARCH_INDEX_PREFIX=${OPENSEARCH_INDEX_PREFIX:-cybersentinel-logs}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROCESSOR_WORKERS=${PROCESSOR_WORKERS:-4}
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${PROCESSOR_MAX_MEMORY:-1g}
+      replicas: 2
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: cybersentinel-api
+    hostname: api
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_SECRET_KEY=${API_SECRET_KEY:-change-this-to-a-random-secret-key-in-production}
+      - API_CORS_ORIGINS=${API_CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_USER=${OPENSEARCH_USER:-admin}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD:-admin}
+      - OPENSEARCH_INDEX_PREFIX=${OPENSEARCH_INDEX_PREFIX:-cybersentinel-logs}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-cybersentinel}
+      - POSTGRES_USER=${POSTGRES_USER:-cybersentinel}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-this-password-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-jwt-secret-in-production}
+    ports:
+      - "8000:8000/tcp"
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MAX_MEMORY:-512m}
+
+  alerting:
+    build:
+      context: ./services/alerting
+      dockerfile: Dockerfile
+    container_name: cybersentinel-alerting
+    hostname: alerting
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_PROCESSED_LOGS=${KAFKA_TOPIC_PROCESSED_LOGS:-processed-logs}
+      - KAFKA_TOPIC_ALERTS=${KAFKA_TOPIC_ALERTS:-alerts}
+      - KAFKA_CONSUMER_GROUP_ALERTING=${KAFKA_CONSUMER_GROUP_ALERTING:-alerting-group}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ALERTING_SMTP_HOST=${ALERTING_SMTP_HOST:-smtp.gmail.com}
+      - ALERTING_SMTP_PORT=${ALERTING_SMTP_PORT:-587}
+      - ALERTING_SMTP_USER=${ALERTING_SMTP_USER}
+      - ALERTING_SMTP_PASSWORD=${ALERTING_SMTP_PASSWORD}
+      - ALERTING_FROM_EMAIL=${ALERTING_FROM_EMAIL:-cybersentinel@example.com}
+      - ALERTING_TO_EMAILS=${ALERTING_TO_EMAILS:-admin@example.com}
+      - ALERTING_SLACK_WEBHOOK_URL=${ALERTING_SLACK_WEBHOOK_URL}
+    ports:
+      - "9103:9103/tcp"
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${ALERTING_MAX_MEMORY:-256m}
+
+  # ==================== Monitoring Services ====================
+
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    container_name: cybersentinel-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090/tcp"
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    hostname: grafana
+    container_name: cybersentinel-grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./configs/grafana:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000/tcp"
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+
+networks:
+  cybersentinel-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+  opensearch-data:
+  redis-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
