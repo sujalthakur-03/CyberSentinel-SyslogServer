@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     api_workers: int = 4
     api_secret_key: str = "change-this-to-a-random-secret-key-in-production"
     api_access_token_expire_minutes: int = 60
-    api_cors_origins: str = "http://localhost:3000,http://localhost:8080,http://172.17.124.220:3000,http://172.17.124.220:8000"
+    api_cors_origins: str = "*"  # Default: Allow all origins. Override with specific origins in production via API_CORS_ORIGINS env var
     api_rate_limit_per_minute: int = 100
 
     # OpenSearch settings
@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list."""
+        if self.api_cors_origins == "*":
+            return ["*"]
         return [origin.strip() for origin in self.api_cors_origins.split(",")]
 
     @property
