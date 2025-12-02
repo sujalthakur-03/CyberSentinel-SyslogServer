@@ -206,7 +206,7 @@ services:
       - API_HOST=0.0.0.0
       - API_PORT=8000
       - API_SECRET_KEY=${API_SECRET_KEY:-change-this-to-a-random-secret-key-in-production}
-      - API_CORS_ORIGINS=${API_CORS_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - API_CORS_ORIGINS=${API_CORS_ORIGINS:-*}
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - OPENSEARCH_USER=${OPENSEARCH_USER:-admin}
@@ -229,6 +229,26 @@ services:
       resources:
         limits:
           memory: ${API_MAX_MEMORY:-512m}
+
+  frontend:
+    build:
+      context: ./frontend/cybersentinel-ui
+      dockerfile: Dockerfile
+    container_name: cybersentinel-frontend
+    hostname: frontend
+    depends_on:
+      - api
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000/tcp"
+    networks:
+      - cybersentinel-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MAX_MEMORY:-256m}
 
   alerting:
     build:
@@ -288,25 +308,6 @@ services:
       - cybersentinel-network
     restart: unless-stopped
 
-  grafana:
-    image: grafana/grafana:latest
-    hostname: grafana
-    container_name: cybersentinel-grafana
-    depends_on:
-      - prometheus
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
-      - GF_INSTALL_PLUGINS=
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./configs/grafana:/etc/grafana/provisioning:ro
-    ports:
-      - "3001:3000/tcp"
-    networks:
-      - cybersentinel-network
-    restart: unless-stopped
-
 networks:
   cybersentinel-network:
     driver: bridge
@@ -322,4 +323,3 @@ volumes:
   redis-data:
   postgres-data:
   prometheus-data:
-  grafana-data:
