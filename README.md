@@ -27,6 +27,8 @@
 - [Using the Web Interface](#using-the-web-interface)
 - [API Documentation](#-api-documentation)
 - [Troubleshooting](#-troubleshooting)
+- [Production Deployment](#-production-deployment)
+- [Uninstallation](#-uninstallation)
 
 ---
 
@@ -780,6 +782,99 @@ RECEIVER_MAX_MEMORY=2g
 
 # Restart services
 docker-compose up -d --scale processor=4
+```
+
+---
+
+## 🗑️ Uninstallation
+
+If you need to completely remove CyberSentinel from your system, we provide an automated uninstallation script.
+
+### ⚠️ WARNING
+
+**The uninstallation process will:**
+- ✗ Remove ALL Docker containers
+- ✗ Remove ALL Docker volumes (**ALL DATA WILL BE PERMANENTLY DELETED**)
+- ✗ Remove ALL Docker images
+- ✗ Remove ALL Docker networks
+- ✗ Delete generated SSL certificates
+- ✗ Delete all logs and alerts
+
+**The uninstallation will NOT remove:**
+- ✓ Docker Engine
+- ✓ Docker Compose
+- ✓ Source code files
+
+### Automated Uninstallation
+
+```bash
+# Run the uninstallation script
+sudo bash uninstall.sh
+```
+
+The script will:
+1. Ask for confirmation (you'll need to type "DELETE ALL DATA")
+2. Stop all running containers
+3. Remove all containers
+4. Remove all volumes (permanent data deletion)
+5. Remove all Docker images
+6. Remove all networks
+7. Clean up generated files (certs, logs, configs)
+8. Optionally run Docker system prune
+9. Verify complete removal
+
+### Manual Uninstallation
+
+If you prefer to uninstall manually:
+
+```bash
+# Stop and remove all containers
+docker-compose down -v
+
+# Remove all images
+docker images | grep cybersentinel | awk '{print $3}' | xargs docker rmi -f
+
+# Remove networks
+docker network ls | grep cybersentinel | awk '{print $1}' | xargs docker network rm
+
+# Clean up generated files
+rm -rf certs/ logs/ frontend/cybersentinel-ui/build/ frontend/cybersentinel-ui/node_modules/
+
+# (Optional) Prune Docker system
+docker system prune -af --volumes
+```
+
+### Verification
+
+After uninstallation, verify all components are removed:
+
+```bash
+# Check for remaining containers
+docker ps -a | grep cybersentinel
+
+# Check for remaining volumes
+docker volume ls | grep cybersentinel
+
+# Check for remaining images
+docker images | grep cybersentinel
+
+# Check for remaining networks
+docker network ls | grep cybersentinel
+```
+
+All commands should return empty results.
+
+### Reinstallation
+
+To reinstall CyberSentinel after uninstallation:
+
+```bash
+# Automated deployment
+sudo bash deploy.sh
+
+# Or manual deployment
+docker-compose build
+docker-compose up -d
 ```
 
 ---
