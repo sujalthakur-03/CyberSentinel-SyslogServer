@@ -79,11 +79,22 @@ class APIService {
     severity?: string;
     facility?: string;
     hostname?: string;
-    size?: number;
-    from?: number;
+    page?: number;
+    page_size?: number;
+    sort_by?: string;
+    sort_order?: string;
   }) {
-    const response = await this.client.post('/logs/search', params);
-    return response.data;
+    console.log('API Service: Searching logs with params:', params);
+    console.log('API Service: Using base URL:', API_BASE_URL);
+    try {
+      const response = await this.client.post('/logs/search', params);
+      console.log('API Service: Search successful, response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API Service: Search failed:', error);
+      console.error('API Service: Error response:', error.response?.data);
+      throw error;
+    }
   }
 
   // Get statistics

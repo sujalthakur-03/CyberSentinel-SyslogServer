@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   FileText,
   Search,
-  AlertTriangle,
   Settings,
   Shield
 } from 'lucide-react';
@@ -22,7 +21,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/logs', icon: FileText, label: 'Logs' },
     { path: '/search', icon: Search, label: 'Search' },
-    { path: '/alerts', icon: AlertTriangle, label: 'Alerts' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 

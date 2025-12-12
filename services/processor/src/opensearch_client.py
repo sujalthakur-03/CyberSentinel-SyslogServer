@@ -186,6 +186,14 @@ class OpenSearchClient:
             messages_indexed_total.labels(status="success").inc(success)
             if failed:
                 messages_indexed_total.labels(status="failed").inc(len(failed))
+                # Log first few errors for debugging
+                for idx, item in enumerate(failed[:3]):
+                    error_info = item if isinstance(item, dict) else {}
+                    logger.error(
+                        "opensearch_bulk_item_failed",
+                        error=error_info,
+                        item_index=idx,
+                    )
                 logger.warning(
                     "opensearch_bulk_partial_failure",
                     success=success,

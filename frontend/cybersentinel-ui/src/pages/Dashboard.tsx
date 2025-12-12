@@ -61,14 +61,27 @@ const Dashboard: React.FC = () => {
     warnings: 0,
   });
 
-  // Initialize with last 7 days
+  // Real-time updates
+  const [newLogsCount, setNewLogsCount] = useState(0);
+  const [isLive, setIsLive] = useState(true);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+
+  // Initialize with last 7 days - refresh dates on component mount
   useEffect(() => {
     const end = new Date();
+    // Add 1 day to end date to ensure we catch recent logs
+    end.setDate(end.getDate() + 1);
+
     const start = new Date();
     start.setDate(start.getDate() - 7);
 
     setEndDate(end.toISOString().slice(0, 16));
     setStartDate(start.toISOString().slice(0, 16));
+
+    console.log('Dashboard: Date range initialized', {
+      start: start.toISOString(),
+      end: end.toISOString()
+    });
   }, []);
 
   const fetchLogs = async (showLoader = true) => {
@@ -80,10 +93,10 @@ const Dashboard: React.FC = () => {
     setError('');
 
     try {
-      const params: SearchParams = {
+      const params: any = {
         query: searchQuery || undefined,
-        severity: filters.severity || undefined,
-        facility: filters.facility || undefined,
+        severity: filters.severity ? [filters.severity] : undefined,
+        facility: filters.facility ? [filters.facility] : undefined,
         hostname: filters.hostname || undefined,
         start_time: startDate ? new Date(startDate).toISOString() : undefined,
         end_time: endDate ? new Date(endDate).toISOString() : undefined,
@@ -93,7 +106,9 @@ const Dashboard: React.FC = () => {
         sort_order: 'desc',
       };
 
+      console.log('Dashboard: Fetching logs with params:', params);
       const response = await api.searchLogs(params);
+      console.log('Dashboard: Received response:', response);
 
       // Backend returns {total, page, page_size, logs} not OpenSearch format
       const logEntries = response.logs || [];
@@ -115,8 +130,10 @@ const Dashboard: React.FC = () => {
         warnings: warningCount,
       });
     } catch (err) {
-      setError(parseErrorMessage(err));
-      console.error('Failed to fetch logs:', err);
+      const errorMsg = parseErrorMessage(err);
+      setError(errorMsg);
+      console.error('Dashboard: Failed to fetch logs:', err);
+      console.error('Dashboard: Error message:', errorMsg);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -125,9 +142,43 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (startDate && endDate) {
+      console.log('Dashboard: useEffect triggered, fetching logs');
       fetchLogs();
     }
   }, [currentPage, pageSize, startDate, endDate]);
+
+  // Real-time auto-refresh every 5 seconds when live mode is on
+  useEffect(() => {
+    if (!isLive) return;
+
+    const interval = setInterval(() => {
+      if (startDate && endDate) {
+        console.log('Dashboard: Real-time refresh triggered');
+        // Update end date to now + 1 day to catch new logs
+        const end = new Date();
+        end.setDate(end.getDate() + 1);
+        setEndDate(end.toISOString().slice(0, 16));
+
+        // Fetch logs without showing loader (silent refresh)
+        fetchLogs(false);
+        setLastFetchTime(new Date());
+      }
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isLive, startDate, endDate]);
+
+  // Track new logs
+  useEffect(() => {
+    const prevTotal = stats.total;
+    if (prevTotal > 0 && total > prevTotal) {
+      const newCount = total - prevTotal;
+      setNewLogsCount(prev => prev + newCount);
+
+      // Auto-clear notification after 5 seconds
+      setTimeout(() => setNewLogsCount(0), 5000);
+    }
+  }, [total]);
 
   const handleSearch = () => {
     setCurrentPage(1);

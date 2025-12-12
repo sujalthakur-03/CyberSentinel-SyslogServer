@@ -12,7 +12,6 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import LogsPage from './pages/LogsPage';
 import SearchPage from './pages/SearchPage';
-import AlertsPage from './pages/AlertsPage';
 import SettingsPage from './pages/SettingsPage';
 import './index.css';
 
@@ -62,14 +61,6 @@ function App() {
             <ProtectedRoute>
               <AppLayout>
                 <SearchPage />
-              </AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/alerts" element={
-            <ProtectedRoute>
-              <AppLayout>
-                <AlertsPage />
               </AppLayout>
             </ProtectedRoute>
           } />

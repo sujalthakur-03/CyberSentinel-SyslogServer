@@ -31,7 +31,20 @@
       "Bash(git submodule:*)",
       "Bash(cat:*)",
       "Bash(git rm:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(ls:*)",
+      "Bash(git -C /home/soc/CyberSentinel-SyslogServer log --oneline -10)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker run:*)",
+      "Bash(cybersentinel-syslogserver_frontend:latest)",
+      "Bash(xargs:*)",
+      "Bash(docker port:*)",
+      "Bash(netstat:*)",
+      "Bash(sudo ufw status:*)",
+      "Bash(sudo iptables:*)",
+      "Bash(sudo ss:*)",
+      "Bash(docker cp:*)"
     ],
     "deny": [],
     "ask": []

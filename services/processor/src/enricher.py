@@ -159,13 +159,24 @@ class LogEnricher:
             enriched["tags"] = tags
 
             # Normalize timestamp format
-            if "timestamp" in log_data:
+            timestamp = log_data.get("timestamp", "")
+            if timestamp:
                 try:
-                    # Try to parse and normalize timestamp
-                    # This is a simplified version; production would handle multiple formats
-                    enriched["timestamp_normalized"] = log_data["timestamp"]
-                except Exception:
+                    # Try to parse various timestamp formats
+                    from dateutil import parser as dateutil_parser
+                    parsed_dt = dateutil_parser.parse(timestamp)
+                    enriched["timestamp_normalized"] = parsed_dt.isoformat()
+                    # Update the main timestamp field with the normalized version
+                    enriched["timestamp"] = enriched["timestamp_normalized"]
+                except Exception as e:
+                    # If timestamp parsing fails, use received_at
+                    logger.debug("timestamp_parse_failed", timestamp=timestamp, error=str(e))
                     enriched["timestamp_normalized"] = enriched["received_at"]
+                    enriched["timestamp"] = enriched["received_at"]
+            else:
+                # No timestamp provided, use received_at
+                enriched["timestamp_normalized"] = enriched.get("received_at", datetime.utcnow().isoformat())
+                enriched["timestamp"] = enriched["timestamp_normalized"]
 
             # Add index metadata
             enriched["_index_date"] = datetime.utcnow().strftime("%Y.%m.%d")
