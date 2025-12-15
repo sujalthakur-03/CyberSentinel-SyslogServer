@@ -7,8 +7,6 @@
 ![Status](https://img.shields.io/badge/status-production%20ready-00ff9f?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-ff0080?style=for-the-badge)
 
-**A Production-Ready, Scalable Syslog Monitoring System with Real-time Threat Detection**
-
 [Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-detailed-documentation) • [Architecture](#-system-architecture) • [API Docs](#-api-documentation)
 
 </div>
@@ -34,14 +32,11 @@
 
 ## 🎯 Overview
 
-**CyberSentinel** is a comprehensive, production-ready syslog monitoring and analysis platform designed for enterprise security operations. It provides real-time log collection, processing, threat detection, and beautiful visualization with a modern cyberpunk-themed interface.
+**CyberSentinel** is a comprehensive, syslog monitoring and analysis platform designed for enterprise security operations. It provides real-time log collection, processing, and visualization.
 
 ### Why CyberSentinel?
 
-- ✅ **Production Ready**: Built with enterprise-grade reliability and scalability
 - ✅ **Real-time Processing**: Handle 10,000+ logs/second with Kafka-based architecture
-- ✅ **Threat Detection**: Automated security threat identification and alerting
-- ✅ **Beautiful UI**: Modern cyberpunk-themed interface with neon aesthetics
 - ✅ **Scalable**: Horizontal scaling support with multiple processor replicas
 - ✅ **Comprehensive**: Full-stack solution from ingestion to visualization
 
@@ -62,20 +57,6 @@
   - Batch processing with 100 logs/batch
   - OpenSearch indexing for fast search
   - Horizontal scaling with multiple processors
-
-- **Advanced Threat Detection**
-  - 10+ threat indicators (SQL injection, XSS, brute force, etc.)
-  - Automated threat scoring
-  - Real-time alerting via Email & Slack
-  - Pattern-based alert rules
-
-- **Beautiful Web Interface**
-  - 🎨 Cyberpunk-themed UI with neon colors
-  - 📊 Real-time dashboard with charts
-  - 🔍 Advanced search with filters
-  - 🚨 Security alerts monitoring
-  - 📈 Statistics and analytics
-  - 💾 Export to CSV/JSON
 
 ---
 
@@ -104,7 +85,7 @@
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                  Log Processor Service (x2)                      │
-│         Enrichment • Threat Detection • Normalization            │
+│                 Enrichment  • Normalization                              │
 │              OpenSearch Indexing • Redis Cache                   │
 └────────────┬────────────────────────────────┬───────────────────┘
              │                                 │
@@ -888,8 +869,6 @@ docker-compose up -d
 ---
 
 <div align="center">
-
-**Made with ❤️ by the CyberSentinel Team**
 
 ⭐ Star this repo if you find it helpful!
 
