@@ -6,24 +6,17 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  FileText,
-  Search,
   Settings,
   Shield
 } from 'lucide-react';
-
 interface SidebarProps {
   isOpen?: boolean;
 }
-
 const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/logs', icon: FileText, label: 'Logs' },
-    { path: '/search', icon: Search, label: 'Search' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
-
   return (
     <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-header">
@@ -32,7 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
           {isOpen && <span className="logo-text">CyberSentinel</span>}
         </div>
       </div>
-
       <nav className="sidebar-nav">
         <ul className="nav-list">
           {navItems.map((item) => (
@@ -49,7 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
           ))}
         </ul>
       </nav>
-
       <div className="sidebar-footer">
         {isOpen && (
           <div className="sidebar-info">
@@ -61,5 +52,4 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true }) => {
     </aside>
   );
 };
-
 export default Sidebar;

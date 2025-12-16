@@ -1,32 +1,23 @@
-/**
- * Log Table Component
- * Displays logs in a table format with sorting and details modal
- */
 import React, { useState } from 'react';
 import { SyslogEntry } from '../types';
-import { formatTimestamp, getSeverityColor, truncateText } from '../utils/helpers';
+import { formatTimestamp, getSeverityColor, truncateText, extractDeviceName } from '../utils/helpers';
 import { Eye, AlertTriangle } from 'lucide-react';
-
 interface LogTableProps {
   logs: SyslogEntry[];
   onLogClick?: (log: SyslogEntry) => void;
   maxHeight?: string;
 }
-
 const LogTable: React.FC<LogTableProps> = ({ logs, onLogClick, maxHeight = '600px' }) => {
   const [selectedLog, setSelectedLog] = useState<SyslogEntry | null>(null);
-
   const handleRowClick = (log: SyslogEntry) => {
     setSelectedLog(log);
     if (onLogClick) {
       onLogClick(log);
     }
   };
-
   const closeModal = () => {
     setSelectedLog(null);
   };
-
   if (logs.length === 0) {
     return (
       <div className="empty-state">
@@ -34,14 +25,13 @@ const LogTable: React.FC<LogTableProps> = ({ logs, onLogClick, maxHeight = '600p
       </div>
     );
   }
-
   return (
     <>
       <div className="log-table-container" style={{ maxHeight }}>
         <table className="log-table">
           <thead>
             <tr>
-              <th>Timestamp</th>
+              <th>Timestamp (IST)</th>
               <th>Severity</th>
               <th>Hostname</th>
               <th>Facility</th>
@@ -50,52 +40,54 @@ const LogTable: React.FC<LogTableProps> = ({ logs, onLogClick, maxHeight = '600p
             </tr>
           </thead>
           <tbody>
-            {logs.map((log, index) => (
-              <tr
-                key={log.id || index}
-                className={log.has_threat_indicators ? 'threat-row' : ''}
-                onClick={() => handleRowClick(log)}
-              >
-                <td className="timestamp-cell">
-                  {formatTimestamp(log.timestamp)}
-                </td>
-                <td>
-                  <span
-                    className="severity-badge"
-                    style={{
-                      backgroundColor: getSeverityColor(log.severity_name || log.severity),
-                      color: '#fff'
-                    }}
-                  >
-                    {log.severity_name || log.severity}
-                  </span>
-                </td>
-                <td>{log.hostname}</td>
-                <td>{log.facility_name || log.facility}</td>
-                <td className="message-cell">
-                  {log.has_threat_indicators && (
-                    <AlertTriangle size={16} className="threat-icon" />
-                  )}
-                  {truncateText(log.message, 100)}
-                </td>
-                <td>
-                  <button
-                    className="icon-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRowClick(log);
-                    }}
-                    title="View details"
-                  >
-                    <Eye size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {logs.map((log, index) => {
+              const deviceName = extractDeviceName(log.message);
+              return (
+                <tr
+                  key={log.id || index}
+                  className={log.has_threat_indicators ? 'threat-row' : ''}
+                  onClick={() => handleRowClick(log)}
+                >
+                  <td className="timestamp-cell">
+                    {formatTimestamp(log.timestamp)}
+                  </td>
+                  <td>
+                    <span
+                      className="severity-badge"
+                      style={{
+                        backgroundColor: getSeverityColor(log.severity_name || log.severity),
+                        color: '#fff'
+                      }}
+                    >
+                      {log.severity_name || log.severity}
+                    </span>
+                  </td>
+                  <td>{deviceName || log.hostname}</td>
+                  <td>{log.facility_name || log.facility}</td>
+                  <td className="message-cell">
+                    {log.has_threat_indicators && (
+                      <AlertTriangle size={16} className="threat-icon" />
+                    )}
+                    {truncateText(log.message, 100)}
+                  </td>
+                  <td>
+                    <button
+                      className="icon-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRowClick(log);
+                      }}
+                      title="View details"
+                    >
+                      <Eye size={18} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-
       {selectedLog && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -181,5 +173,4 @@ const LogTable: React.FC<LogTableProps> = ({ logs, onLogClick, maxHeight = '600p
     </>
   );
 };
-
 export default LogTable;
