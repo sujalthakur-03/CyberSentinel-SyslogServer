@@ -37,13 +37,18 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 168
-      KAFKA_LOG_RETENTION_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_BYTES: 5368709120
       KAFKA_COMPRESSION_TYPE: lz4
+      KAFKA_NUM_PARTITIONS: 6
     volumes:
       - kafka-data:/var/lib/kafka/data
     networks:
       - cybersentinel-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${KAFKA_MAX_MEMORY:-2g}
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 30s
@@ -60,8 +65,9 @@ services:
       - node.name=opensearch-node1
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
       - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin@123"
     ulimits:
       memlock:
         soft: -1
@@ -74,6 +80,10 @@ services:
     networks:
       - cybersentinel-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${OPENSEARCH_MAX_MEMORY:-4g}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
@@ -135,6 +145,7 @@ services:
       - RECEIVER_TLS_PORT=${RECEIVER_TLS_PORT:-6514}
       - RECEIVER_TLS_ENABLED=${RECEIVER_TLS_ENABLED:-false}
       - RECEIVER_MAX_MESSAGE_SIZE=${RECEIVER_MAX_MESSAGE_SIZE:-8192}
+      - RECEIVER_WORKERS=${RECEIVER_WORKERS:-8}
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - KAFKA_TOPIC_RAW_LOGS=${KAFKA_TOPIC_RAW_LOGS:-raw-logs}
     ports:
@@ -152,7 +163,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${RECEIVER_MAX_MEMORY:-512m}
+          memory: ${RECEIVER_MAX_MEMORY:-1g}
 
   processor:
     build:
@@ -179,15 +190,16 @@ services:
       - OPENSEARCH_INDEX_PREFIX=${OPENSEARCH_INDEX_PREFIX:-cybersentinel-logs}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - PROCESSOR_WORKERS=${PROCESSOR_WORKERS:-4}
+      - PROCESSOR_WORKERS=${PROCESSOR_WORKERS:-8}
+      - PROCESSOR_BATCH_SIZE=${PROCESSOR_BATCH_SIZE:-200}
     networks:
       - cybersentinel-network
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: ${PROCESSOR_MAX_MEMORY:-1g}
-      replicas: 2
+          memory: ${PROCESSOR_MAX_MEMORY:-2g}
+      replicas: ${PROCESSOR_REPLICAS:-4}
 
   api:
     build:

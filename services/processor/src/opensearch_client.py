@@ -114,7 +114,15 @@ class OpenSearchClient:
                             "severity": {"type": "integer"},
                             "severity_name": {"type": "keyword"},
                             "severity_category": {"type": "keyword"},
-                            "message": {"type": "text"},
+                            "message": {
+                                "type": "text",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "keyword",
+                                        "ignore_above": 256
+                                    }
+                                }
+                            },
                             "raw": {"type": "text"},
                             "protocol": {"type": "keyword"},
                             "app_name": {"type": "keyword"},
@@ -129,9 +137,11 @@ class OpenSearchClient:
                         }
                     },
                     "settings": {
-                        "number_of_shards": 3,
+                        "number_of_shards": 2,
                         "number_of_replicas": 1,
-                        "refresh_interval": "5s",
+                        "refresh_interval": "30s",
+                        "index.codec": "best_compression",
+                        "index.query.default_field": ["message", "hostname", "app_name"],
                     },
                 }
 
