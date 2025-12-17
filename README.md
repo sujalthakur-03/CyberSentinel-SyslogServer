@@ -846,8 +846,6 @@ If you find CyberSentinel useful, please consider giving it a ⭐ on GitHub!
 
 ---
 
-**Made with ❤️ by the CyberSentinel Team**
-
 [⬆ Back to Top](#️-cybersentinel-syslogserver)
 
 </div>
